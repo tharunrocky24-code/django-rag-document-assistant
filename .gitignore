@@ -1,0 +1,33 @@
+# Environment & Secrets
+.env
+*.env
+backend/.env
+*.pem
+
+# Python / Django
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+backend/venv/
+ENV/
+env/
+.venv/
+media/
+backend/media/
+chroma_db/
+backend/chroma_db/
+*.sqlite3
+db.sqlite3
+backend/db.sqlite3
+
+# Archives & Temporary
+django_rag_project.zip
+scratch/
+.system_generated/
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - Django RAG Assistant{% endblock %}
+{% block page_title %}System Overview & Analytics{% endblock %}
+
+{% block content %}
+<!-- Metrics Grid -->
+<div class="metrics-grid">
+    <div class="metric-card">
+        <div class="metric-icon-wrap">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+        </div>
+        <div class="metric-value">{{ total_docs }}</div>
+        <div class="metric-label">Total Documents</div>
+    </div>
+
+    <div class="metric-card">
+        <div class="metric-icon-wrap">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+        </div>
+        <div class="metric-value">{{ completed_docs }}</div>
+        <div class="metric-label">Indexed Documents</div>
+    </div>
+
+    <div class="metric-card">
+        <div class="metric-icon-wrap">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polygon points="2 17 12 22 22 17"></polygon><polygon points="2 12 12 17 22 12"></polygon></svg>
+        </div>
+        <div class="metric-value">{{ total_chunks }}</div>
+        <div class="metric-label">ChromaDB Vector Chunks</div>
+    </div>
+
+    <div class="metric-card">
+        <div class="metric-icon-wrap">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+        </div>
+        <div class="metric-value">{{ total_chats }}</div>
+        <div class="metric-label">Conversations</div>
+    </div>
+</div>
+
+<!-- Split Grid: Recent Documents & Recent Conversations -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 20px;">
+    <!-- Recent Documents Card -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg>
+                Recent Documents
+            </h3>
+            <a href="{% url 'document_list' %}" class="btn btn-secondary btn-sm">View All</a>
+        </div>
+
+        {% if recent_docs %}
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Status</th>
+                        <th>Chunks</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for doc in recent_docs %}
+                    <tr>
+                        <td style="font-weight: 500; color: var(--text-primary);">{{ doc.title|truncatechars:26 }}</td>
+                        <td>
+                            <span class="status-badge {{ doc.processing_status }}">
+                                {{ doc.get_processing_status_display }}
+                            </span>
+                        </td>
+                        <td>{{ doc.chunk_count }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div style="text-align: center; padding: 26px; color: var(--text-muted);">
+            <p>No documents uploaded yet.</p>
+            <a href="{% url 'document_list' %}" class="btn btn-primary btn-sm" style="margin-top: 10px;">Upload First Document</a>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Recent Conversations Card -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                Recent RAG Chats
+            </h3>
+            <a href="{% url 'chat_new' %}" class="btn btn-primary btn-sm">+ New Chat</a>
+        </div>
+
+        {% if recent_chats %}
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+            {% for chat in recent_chats %}
+            <a href="{% url 'chat_conversation' conversation_id=chat.id %}" class="conversation-item" style="border: 1px solid var(--border-subtle);">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="color: var(--accent-cyan);">💬</span>
+                    <span class="conv-title" style="font-weight: 500;">{{ chat.title }}</span>
+                </div>
+                <span style="font-size: 11px; color: var(--text-muted);">{{ chat.updated_at|timesince }} ago</span>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div style="text-align: center; padding: 26px; color: var(--text-muted);">
+            <p>No active chat sessions.</p>
+            <a href="{% url 'chat_new' %}" class="btn btn-secondary btn-sm" style="margin-top: 10px;">Ask a Question</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
