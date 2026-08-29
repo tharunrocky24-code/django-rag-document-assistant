@@ -16,12 +16,12 @@ FALLBACK_GROQ_MODELS = [
     'qwen/qwen3.8-27b',
 ]
 
-def get_groq_llm(model_name=None, temperature=0.2, max_tokens=1024):
+def get_groq_llm(model_name=None, temperature=0.2, max_tokens=1024, request_timeout=8):
     """
-    Instantiates ChatGroq using settings or preferred model.
+    Instantiates ChatGroq using settings or preferred model with low-latency timeout.
     """
     groq_api_key = getattr(settings, 'GROQ_API_KEY', '') or os.getenv('GROQ_API_KEY', '')
-    groq_model = model_name or getattr(settings, 'GROQ_MODEL', 'openai/gpt-oss-120b')
+    groq_model = model_name or getattr(settings, 'GROQ_MODEL', 'openai/gpt-oss-20b')
 
     if groq_api_key and groq_api_key != 'mock-key-for-dev':
         try:
@@ -30,7 +30,9 @@ def get_groq_llm(model_name=None, temperature=0.2, max_tokens=1024):
                 groq_api_key=groq_api_key,
                 model_name=groq_model,
                 temperature=temperature,
-                max_tokens=max_tokens
+                max_tokens=max_tokens,
+                request_timeout=request_timeout,
+                max_retries=1
             )
         except Exception as e:
             logger.error(f"Error initializing ChatGroq with {groq_model}: {e}")
@@ -202,12 +204,14 @@ def stream_rag_pipeline(user_id: int, question: str, chat_history=None, document
 
     messages.append(HumanMessage(content=question))
 
-    primary_model = getattr(settings, 'GROQ_MODEL', 'openai/gpt-oss-120b')
-    candidate_models = [primary_model] + [m for m in FALLBACK_GROQ_MODELS if m != primary_model]
+    primary_model = getattr(settings, 'GROQ_MODEL', 'openai/gpt-oss-20b')
+    candidate_models = [primary_model, 'openai/gpt-oss-120b']
 
     streamed_anything = False
+    error_msg = None
+
     for model_name in candidate_models:
-        llm = get_groq_llm(model_name=model_name)
+        llm = get_groq_llm(model_name=model_name, request_timeout=6)
         if not llm:
             continue
         try:
@@ -218,9 +222,16 @@ def stream_rag_pipeline(user_id: int, question: str, chat_history=None, document
             if streamed_anything:
                 break
         except Exception as e:
-            logger.warning(f"Groq streaming failed on {model_name}: {e}. Trying fallback...")
+            error_msg = str(e)
+            logger.warning(f"Groq streaming failed on {model_name}: {e}")
+            # If network connection is timing out, don't cascade retry
+            if "timeout" in error_msg.lower() or "connect" in error_msg.lower():
+                break
             continue
 
     if not streamed_anything:
-        yield "I couldn't find any relevant information in your uploaded documents or connect to the model."
+        if error_msg and ("timeout" in error_msg.lower() or "connect" in error_msg.lower()):
+            yield "⚠️ Unable to reach Groq AI cloud service due to a network connection timeout. Please verify your internet connection or try again in a moment."
+        else:
+            yield "I couldn't find any relevant information in your uploaded documents or connect to the model."
 
